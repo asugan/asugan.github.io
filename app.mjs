@@ -10,19 +10,17 @@ export function githubURL(value) {
   }
 }
 
-export function activityDays(counts, timestamp) {
-  const end = new Date(timestamp);
-  if (Number.isNaN(end.getTime())) throw new Error('Invalid update timestamp');
-  end.setUTCHours(0, 0, 0, 0);
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 89);
-  // Monday-aligned weeks; leading cells sit outside the 90-day window.
-  start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
-  const days = [];
-  for (const date = new Date(start); date <= end; date.setUTCDate(date.getUTCDate() + 1)) {
-    const key = date.toISOString().slice(0, 10);
-    const count = Number.isInteger(counts[key]) && counts[key] > 0 ? counts[key] : 0;
-    days.push({ date: key, count, level: count === 0 ? 0 : count < 3 ? 1 : count < 6 ? 2 : count < 10 ? 3 : 4 });
+export function activityDays(calendar) {
+  if (!Array.isArray(calendar) || !calendar.length) throw new Error('Missing contribution calendar');
+  const days = calendar.map(day => {
+    const timestamp = Date.parse(`${day.date}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== day.date || !Number.isInteger(day.count) || day.count < 0 || !Number.isInteger(day.level) || day.level < 0 || day.level > 4) {
+      throw new Error('Invalid contribution day');
+    }
+    return { date: day.date, count: day.count, level: day.level };
+  }).sort((a, b) => a.date.localeCompare(b.date));
+  for (let i = 1; i < days.length; i++) {
+    if (Date.parse(days[i].date) - Date.parse(days[i - 1].date) !== 86400000) throw new Error('Missing or duplicate contribution date');
   }
   return days;
 }
@@ -48,19 +46,29 @@ async function loadGitHub() {
     const response = await fetch('data/github.json', { cache: 'no-cache' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    if (!Number.isInteger(data.public_repos) || !Array.isArray(data.repos) || !Array.isArray(data.commits) || !data.activity || typeof data.activity !== 'object') {
+    if (!Number.isInteger(data.public_repos) || !Array.isArray(data.repos) || !Array.isArray(data.commits) || !Array.isArray(data.activity)) {
       throw new Error('Invalid GitHub data');
     }
-    const days = activityDays(data.activity, data.updated_at);
+    const days = activityDays(data.activity);
     document.querySelector('#repo-count').textContent = String(data.public_repos).padStart(2, '0');
     const total = days.reduce((sum, day) => sum + day.count, 0);
-    status.textContent = `${total} public events · API records from the last 90 days`;
+    status.textContent = `${total.toLocaleString('en-US')} contributions in the last year`;
     const heatmap = document.querySelector('#heatmap');
-    for (const day of days) {
+    const months = document.querySelector('#heatmap-months');
+    months.style.gridTemplateColumns = `repeat(${Math.ceil(days.length / 7)}, 1fr)`;
+    for (const [index, day] of days.entries()) {
+      const date = new Date(`${day.date}T00:00:00Z`);
       const cell = element('span', `heatmap-cell level-${day.level}`);
-      cell.title = `${dateFormat.format(new Date(`${day.date}T00:00:00Z`))}: ${day.count} public events`;
+      cell.title = `${dateFormat.format(date)}: ${day.count} contributions`;
       heatmap.append(cell);
+      if (index % 7 === 0 && date.getUTCDate() <= 7) {
+        const month = element('span', '', date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }));
+        month.style.gridColumn = String(Math.floor(index / 7) + 1);
+        months.append(month);
+      }
     }
+    const scroll = document.querySelector('.heatmap-scroll');
+    scroll.scrollLeft = scroll.scrollWidth - scroll.clientWidth;
     const repos = document.querySelector('#repos');
     for (const repo of data.repos) {
       const row = link('repo-link', undefined, repo.url);

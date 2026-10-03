@@ -39,7 +39,7 @@ jobs:
           mkdir -p _site
           cp index.html styles.css app.mjs .nojekyll _site/
           cp -r assets data _site/
-      - name: Refresh public GitHub data
+      - name: Refresh GitHub calendar and public commits
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/update_github.py --output _site/data/github.json

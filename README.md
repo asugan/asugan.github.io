@@ -29,7 +29,11 @@ The workflow refreshes GitHub data and redeploys the site daily at 06:23 UTC. Sc
 
 Featured App Store apps: Petopia, Shadow Work, Grimoire, and ColdLog. Images were downloaded from the developer's public App Store listings. When adding an app, update the cards and app count in `index.html`.
 
-The GitHub activity display is **not a contribution calendar**: it counts up to 300 public events returned by the API within the last 90 days. Private repositories are excluded. The commit list scans commits associated with the account in the five most recently active public repositories, excluding the profile and this site's repositories, and displays the six newest commits. The project list displays the three most recently updated non-fork repositories.
+The activity graph mirrors GitHub's **public annual contribution calendar**, including GitHub's own daily counts and color levels. To include anonymous private contributions, enable **Contribution settings → Private contributions** on your GitHub profile. No private-access token is needed: the updater reads the calendar visible to unauthenticated visitors and saves only dates, counts, and color levels. Private repository names, commit messages, and URLs are never collected for the calendar.
+
+The right-hand list remains **public commits only**. It scans commits associated with the account in the five most recently active public repositories, excluding the profile and this site's repositories, and displays the six newest commits. The project list displays the three most recently updated non-fork public repositories.
+
+The calendar is parsed from GitHub's HTML using Python's standard library. If GitHub changes its markup or returns an incomplete calendar, the refresh fails instead of inventing counts or publishing a blank graph; the existing deployment remains unchanged.
 
 Refresh local data (unauthenticated public API rate limits apply without a token):
 

@@ -9,11 +9,24 @@ test('site and README use Asugan with English copy and date locale', async () =>
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
   assert.match(html, /<html lang="en">/);
   assert.match(html, /I'm <strong>Asugan<\/strong>\./);
-  assert.match(html, /<title>Asugan — Independent Developer<\/title>/);
+  assert.match(html, /<title>Asugan — Indie Developer<\/title>/);
   assert.match(readme, /Asugan's personal portfolio/);
   assert.match(script, /Intl.DateTimeFormat\('en-US'/);
   assert.doesNotMatch(html + readme, /\b(?:Erkin|Eren)\b/);
   assert.doesNotMatch(html + script + readme, /[çÇğĞıİöÖşŞüÜ]/);
+});
+
+test('portfolio uses dark colors, the GitHub avatar, and updated copy', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(html, /INDIE DEVELOPER · TURKEY/);
+  assert.match(html, /curiosity & ideas/);
+  assert.match(html, /class="profile-logo"[^]*?src="assets\/avatar\.jpg"/);
+  assert.ok((await readFile(new URL('../assets/avatar.jpg', import.meta.url))).length > 0);
+  assert.match(html, /name="theme-color" content="#111512"/);
+  assert.match(css, /color-scheme: dark/);
+  assert.doesNotMatch(html, /coffee|Dekadans AI|web-project|INDEPENDENT DEVELOPER/);
+  assert.doesNotMatch(css, /\.web-project|\.project-cta|\.project-symbol/);
 });
 
 test('GitHub links allow HTTPS GitHub only', () => {
@@ -23,18 +36,34 @@ test('GitHub links allow HTTPS GitHub only', () => {
   }
 });
 
-test('calendar aligns Monday, ends at snapshot UTC day, and handles year boundaries', () => {
-  const days = activityDays({ '2025-12-31': 2, '2026-01-01': 10 }, '2026-01-01T23:50:00Z');
-  assert.equal(new Date(`${days[0].date}T00:00:00Z`).getUTCDay(), 1);
-  assert.ok(days.length >= 90 && days.length <= 96);
-  assert.deepEqual(days.at(-1), { date: '2026-01-01', count: 10, level: 4 });
-  assert.deepEqual(days.at(-2), { date: '2025-12-31', count: 2, level: 1 });
-  assert.equal(days.find(day => day.date === '2025-12-30').count, 0);
+test('calendar preserves GitHub counts and color levels across year boundaries', () => {
+  const days = activityDays([
+    { date: '2026-01-01', count: 10, level: 1 },
+    { date: '2025-12-31', count: 1, level: 4, private_repo: 'must-not-be-rendered' },
+  ]);
+  assert.deepEqual(days, [
+    { date: '2025-12-31', count: 1, level: 4 },
+    { date: '2026-01-01', count: 10, level: 1 },
+  ]);
 });
 
-test('bad counts never become invented activity; invalid timestamp fails', () => {
-  for (const count of [-1, '7', 1.5, null]) {
-    assert.equal(activityDays({ '2026-01-01': count }, '2026-01-01').at(-1).count, 0);
-  }
-  assert.throws(() => activityDays({}, 'not-a-date'), /Invalid update timestamp/);
+test('bad days, gaps, or missing calendars fail instead of inventing activity', () => {
+  const day = { date: '2026-01-01', count: 1, level: 2 };
+  for (const count of [-1, '7', 1.5, null]) assert.throws(() => activityDays([{ ...day, count }]), /Invalid/);
+  for (const level of [-1, 5, '4']) assert.throws(() => activityDays([{ ...day, level }]), /Invalid/);
+  assert.throws(() => activityDays([{ ...day, date: '2026-02-30' }]), /Invalid/);
+  assert.throws(() => activityDays([day, day]), /duplicate/);
+  assert.throws(() => activityDays([day, { ...day, date: '2026-01-03' }]), /Missing/);
+  assert.throws(() => activityDays([]), /Missing/);
+  assert.throws(() => activityDays({ '2026-01-01': 4 }), /Missing/);
+});
+
+test('annual calendar includes leap days without changing source counts', () => {
+  const calendar = Array.from({ length: 371 }, (_, index) => ({
+    date: new Date(Date.UTC(2023, 9, 1 + index)).toISOString().slice(0, 10), count: index % 5, level: index % 5,
+  }));
+  const days = activityDays(calendar);
+  assert.equal(days.length, 371);
+  assert.ok(days.some(day => day.date === '2024-02-29'));
+  assert.deepEqual(days, calendar);
 });
