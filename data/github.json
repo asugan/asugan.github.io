@@ -1,0 +1,82 @@
+{
+  "updated_at": "2026-10-03T09:07:27.693136+00:00",
+  "public_repos": 39,
+  "activity": {
+    "2026-10-03": 1,
+    "2026-10-02": 1,
+    "2026-09-30": 1,
+    "2026-09-29": 2,
+    "2026-09-24": 3,
+    "2026-09-23": 3,
+    "2026-09-22": 1,
+    "2026-09-14": 1,
+    "2026-09-12": 1,
+    "2026-09-11": 1,
+    "2026-09-10": 1,
+    "2026-09-07": 2
+  },
+  "repos": [
+    {
+      "name": "petopia-legal",
+      "url": "https://github.com/asugan/petopia-legal",
+      "language": "HTML",
+      "stars": 0
+    },
+    {
+      "name": "DekadansAI-Frontend",
+      "url": "https://github.com/asugan/DekadansAI-Frontend",
+      "language": "TypeScript",
+      "stars": 0
+    },
+    {
+      "name": "DekadansAI",
+      "url": "https://github.com/asugan/DekadansAI",
+      "language": "TypeScript",
+      "stars": 0
+    }
+  ],
+  "commits": [
+    {
+      "repo": "petopia-legal",
+      "sha": "490733395850a10c70c37bb3ff10005d0500da93",
+      "url": "https://github.com/asugan/petopia-legal/commit/490733395850a10c70c37bb3ff10005d0500da93",
+      "message": "docs: add Disc Golf legal pages",
+      "date": "2026-09-30T10:54:33Z"
+    },
+    {
+      "repo": "respectaso-custom",
+      "sha": "d07328b5ed2c12a17b2c4ec1e51870068f5e1c87",
+      "url": "https://github.com/asugan/respectaso-custom/commit/d07328b5ed2c12a17b2c4ec1e51870068f5e1c87",
+      "message": "fix: keep MCP compatible with RespectASO v2.28.1",
+      "date": "2026-09-29T09:27:06Z"
+    },
+    {
+      "repo": "petopia-legal",
+      "sha": "eade0cd02c77a3615e21c07da5bbe31094637e2b",
+      "url": "https://github.com/asugan/petopia-legal/commit/eade0cd02c77a3615e21c07da5bbe31094637e2b",
+      "message": "docs(privacy): clarify bulk event deletion",
+      "date": "2026-09-24T13:51:15Z"
+    },
+    {
+      "repo": "petopia-legal",
+      "sha": "f48d5a085cff8b7f7d0e520a8ac5f7e7f81bb6d1",
+      "url": "https://github.com/asugan/petopia-legal/commit/f48d5a085cff8b7f7d0e520a8ac5f7e7f81bb6d1",
+      "message": "docs(daytracker): disclose widget data",
+      "date": "2026-09-24T13:37:06Z"
+    },
+    {
+      "repo": "petopia-legal",
+      "sha": "8df82c36d22422e47f9d940652a2edfe53fe08bf",
+      "url": "https://github.com/asugan/petopia-legal/commit/8df82c36d22422e47f9d940652a2edfe53fe08bf",
+      "message": "chore: remove Graft integration",
+      "date": "2026-09-24T06:57:55Z"
+    },
+    {
+      "repo": "petopia-legal",
+      "sha": "241cd40af2faa46e344afa7527530b049c68b26f",
+      "url": "https://github.com/asugan/petopia-legal/commit/241cd40af2faa46e344afa7527530b049c68b26f",
+      "message": "chore: add graft ignore rules",
+      "date": "2026-09-23T21:36:09Z"
+    }
+  ]
+}
