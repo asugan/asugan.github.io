@@ -163,7 +163,6 @@ function renderChart(container, values, months, id) {
 }
 
 async function loadRevenue() {
-  const status = document.querySelector('#revenue-status');
   try {
     const response = await fetch('data/revenue.json', { cache: 'no-cache' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -173,19 +172,10 @@ async function loadRevenue() {
       document.querySelector(`[data-revenue="${id}"] > span:last-child`).textContent = `${money.format(app.last_30_days)} / 30d`;
       renderChart(document.querySelector(`[data-chart="${id}"]`), app.history, data.months, id);
     }
-    const apps = Object.values(data.apps);
-    const complete = apps.length === appIDs.length;
-    if (complete) {
-      document.querySelector('#total-revenue').textContent = money.format(apps.reduce((sum, app) => sum + app.total, 0));
-      document.querySelector('#monthly-revenue').textContent = money.format(apps.reduce((sum, app) => sum + app.last_30_days, 0));
-      document.querySelector('#revenue-period').textContent = `Tracked since ${apps.map(app => app.start_date).sort()[0]} · USD`;
-      renderChart(document.querySelector('#total-chart'), data.months.map((_, index) => apps.reduce((sum, app) => sum + app.history[index], 0)), data.months, 'total');
-    } else {
-      document.querySelector('#total-chart').replaceChildren(element('p', 'chart-empty', 'Total revenue appears when all 4 apps are connected.'));
-    }
-    status.textContent = `${complete ? 'Gross revenue' : `${apps.length} of 4 apps connected; totals withheld`} · Source: RevenueCat · Updated ${dateFormat.format(new Date(data.updated_at))} · Current month is partial. RevenueCat-tracked purchases only.`;
   } catch (error) {
-    status.textContent = 'Revenue data could not be loaded. No estimated revenue shown.';
+    document.querySelectorAll('[data-chart]').forEach(chart => {
+      chart.replaceChildren(element('p', 'chart-empty', 'Revenue data could not be loaded. No estimated revenue shown.'));
+    });
     console.error('Could not load revenue data:', error);
   }
 }

@@ -23,7 +23,8 @@ test('portfolio has a light sidebar, revenue cards, and no old hero or contact s
   assert.match(html, /class="profile-logo"[^]*?src="assets\/avatar\.jpg"/);
   assert.ok((await readFile(new URL('../assets/avatar.jpg', import.meta.url))).length > 0);
   assert.match(css, /color-scheme: light/);
-  assert.match(html, /id="total-revenue"/);
+  const script = await readFile(new URL('../app.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(html + css + script, /Building in public|revenue-summary|summary-chart|summary-heading|revenue-totals|total-revenue|monthly-revenue|revenue-period|total-chart|revenue-status/);
   for (const id of ['petopia', 'shadow', 'grimoire', 'coldlog']) {
     assert.match(html, new RegExp(`data-chart="${id}"`));
     assert.match(html, new RegExp(`data-revenue="${id}"`));

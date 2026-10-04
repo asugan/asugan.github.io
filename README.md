@@ -46,7 +46,7 @@ The collector uses RevenueCat API v2's documented `/projects/{project_id}/metric
 }
 ```
 
-Use dates at or before the first RevenueCat-tracked sale to cover all tracked revenue. Individual cards can be connected first; combined totals are withheld until all four apps are connected.
+Use dates at or before the first RevenueCat-tracked sale to cover all tracked revenue. Each app card displays its own revenue independently; no combined revenue summary is shown.
 
 4. Run **Actions → Publish portfolio → Run workflow**.
 

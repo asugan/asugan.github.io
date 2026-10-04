@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { revenueData, chartPoints } from '../app.mjs';
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 
 const snapshot = () => ({
   updated_at: '2026-10-04T12:00:00Z', currency: 'USD',
@@ -35,7 +37,40 @@ test('invalid currency, amount, dates, or incomplete history never render as rev
   assert.throws(() => revenueData(data), /Invalid/);
 });
 
-test('charts fill summary, app-card, and mobile viewport widths without distorting values', () => {
+test('app cards load revenue and show fetch errors without a summary section', async () => {
+  const script = (await readFile(new URL('../app.mjs', import.meta.url), 'utf8')).replace(/^export /gm, '');
+  for (const connected of [1, 4, 'error']) {
+    const ids = ['petopia', 'shadow', 'grimoire', 'coldlog'];
+    const nodes = new Map([['#activity-status', {}]]);
+    for (const id of ids) {
+      nodes.set(`[data-revenue="${id}"] > span:last-child`, {});
+      nodes.set(`[data-chart="${id}"]`, { clientWidth: 0, replaceChildren(node) { this.child = node; } });
+    }
+    const data = snapshot();
+    data.apps = Object.fromEntries(ids.slice(0, connected === 'error' ? 0 : connected).map(id => [id, snapshot().apps.petopia]));
+    const errors = [];
+    runInNewContext(script, {
+      document: {
+        querySelector(selector) { assert.ok(nodes.has(selector), `Unexpected selector: ${selector}`); return nodes.get(selector); },
+        querySelectorAll() { return ids.map(id => nodes.get(`[data-chart="${id}"]`)); },
+        createElement() { return {}; },
+      },
+      fetch: url => url === 'data/github.json' ? new Promise(() => {}) : Promise.resolve({ ok: connected !== 'error', status: 503, json: async () => data }),
+      ResizeObserver: class { observe() {} },
+      console: { error: (...args) => errors.push(args) },
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    if (connected === 'error') {
+      assert.equal(errors.length, 1);
+      for (const id of ids) assert.match(nodes.get(`[data-chart="${id}"]`).child.textContent, /Revenue data could not be loaded/);
+    } else {
+      assert.equal(errors.length, 0);
+      for (const id of ids.slice(0, connected)) assert.equal(nodes.get(`[data-revenue="${id}"] > span:last-child`).textContent, '-$2.00 / 30d');
+    }
+  }
+});
+
+test('charts fill wide, app-card, and mobile viewport widths without distorting values', () => {
   for (const [width, height] of [[1100, 140], [480, 114], [260, 125]]) {
     const chart = chartPoints([-10, 0, 20], width, height);
     assert.equal(chart.points[0][0], 40);
