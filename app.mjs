@@ -96,4 +96,91 @@ async function loadGitHub() {
   }
 }
 
-if (typeof document !== 'undefined') loadGitHub();
+const appIDs = ['petopia', 'shadow', 'grimoire', 'coldlog'];
+const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+
+export function revenueData(data) {
+  if (data.currency !== 'USD' || !data.apps || typeof data.apps !== 'object' || Array.isArray(data.apps)) throw new Error('Invalid revenue data');
+  const ids = Object.keys(data.apps);
+  if (!ids.length) return null;
+  if (!Number.isFinite(Date.parse(data.updated_at)) || !Array.isArray(data.months) || data.months.length !== 12) throw new Error('Missing revenue history');
+  for (const [index, month] of data.months.entries()) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error('Invalid revenue month');
+    if (index && Date.parse(`${month}-01`) !== Date.UTC(Number(data.months[index - 1].slice(0, 4)), Number(data.months[index - 1].slice(5, 7)), 1)) throw new Error('Missing or duplicate revenue month');
+  }
+  for (const id of ids) {
+    const app = data.apps[id];
+    if (!appIDs.includes(id) || !app || !Number.isFinite(app.total) || !Number.isFinite(app.last_30_days) || !Array.isArray(app.history) || app.history.length !== 12 || !app.history.every(Number.isFinite) || !/^\d{4}-\d{2}-\d{2}$/.test(app.start_date) || !Number.isFinite(Date.parse(app.start_date)) || new Date(app.start_date).toISOString().slice(0, 10) !== app.start_date) throw new Error('Invalid app revenue');
+  }
+  return data;
+}
+
+export function chartPoints(values) {
+  if (!Array.isArray(values) || values.length < 2 || !values.every(Number.isFinite)) throw new Error('Invalid chart values');
+  const low = Math.min(0, ...values);
+  const high = Math.max(0, ...values);
+  const range = high - low || 1;
+  return { low, high, zero: 90 - (0 - low) / range * 78, points: values.map((value, index) => [40 + index / (values.length - 1) * 350, 90 - (value - low) / range * 78]) };
+}
+
+function svgNode(tag, attributes, text) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function renderChart(container, values, months, id) {
+  const { low, high, zero, points } = chartPoints(values);
+  const chart = svgNode('svg', { viewBox: '0 0 400 114', role: 'img', 'aria-label': 'Monthly gross revenue in USD; current month is partial' });
+  chart.append(svgNode('title', {}, months.map((month, index) => `${month}: ${money.format(values[index])}`).join(', ')));
+  const defs = svgNode('defs', {});
+  const gradient = svgNode('linearGradient', { id: `fill-${id}`, x1: '0', y1: '0', x2: '0', y2: '1' });
+  gradient.append(svgNode('stop', { offset: '0%', 'stop-color': '#e7ac36', 'stop-opacity': '.35' }), svgNode('stop', { offset: '100%', 'stop-color': '#e7ac36', 'stop-opacity': '.03' }));
+  defs.append(gradient);
+  chart.append(defs);
+  for (const y of [12, 51, 90]) chart.append(svgNode('line', { x1: 40, x2: 390, y1: y, y2: y, class: 'chart-grid' }));
+  for (const [index, month] of months.entries()) {
+    const x = points[index][0];
+    chart.append(svgNode('line', { x1: x, x2: x, y1: 12, y2: 90, class: 'chart-grid' }));
+    if (index % 2 === 0 || index === months.length - 1) chart.append(svgNode('text', { x, y: 109, 'text-anchor': 'middle', class: 'chart-label' }, new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })));
+  }
+  const path = points.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+  chart.append(svgNode('path', { d: `${path} L390,${zero} L40,${zero} Z`, fill: `url(#fill-${id})` }), svgNode('path', { d: path, class: 'chart-line' }));
+  const compactMoney = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+  chart.append(svgNode('text', { x: 35, y: 16, 'text-anchor': 'end', class: 'chart-label' }, compactMoney.format(high)), svgNode('text', { x: 35, y: 93, 'text-anchor': 'end', class: 'chart-label' }, compactMoney.format(low)));
+  container.replaceChildren(chart);
+}
+
+async function loadRevenue() {
+  const status = document.querySelector('#revenue-status');
+  try {
+    const response = await fetch('data/revenue.json', { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = revenueData(await response.json());
+    if (!data) return;
+    for (const [id, app] of Object.entries(data.apps)) {
+      document.querySelector(`[data-revenue="${id}"] > span:last-child`).textContent = `${money.format(app.last_30_days)} / 30d`;
+      renderChart(document.querySelector(`[data-chart="${id}"]`), app.history, data.months, id);
+    }
+    const apps = Object.values(data.apps);
+    const complete = apps.length === appIDs.length;
+    if (complete) {
+      document.querySelector('#total-revenue').textContent = money.format(apps.reduce((sum, app) => sum + app.total, 0));
+      document.querySelector('#monthly-revenue').textContent = money.format(apps.reduce((sum, app) => sum + app.last_30_days, 0));
+      document.querySelector('#revenue-period').textContent = `Tracked since ${apps.map(app => app.start_date).sort()[0]} · USD`;
+      renderChart(document.querySelector('#total-chart'), data.months.map((_, index) => apps.reduce((sum, app) => sum + app.history[index], 0)), data.months, 'total');
+    } else {
+      document.querySelector('#total-chart').replaceChildren(element('p', 'chart-empty', 'Total revenue appears when all 4 apps are connected.'));
+    }
+    status.textContent = `${complete ? 'Gross revenue' : `${apps.length} of 4 apps connected; totals withheld`} · Source: RevenueCat · Updated ${dateFormat.format(new Date(data.updated_at))} · Current month is partial. RevenueCat-tracked purchases only.`;
+  } catch (error) {
+    status.textContent = 'Revenue data could not be loaded. No estimated revenue shown.';
+    console.error('Could not load revenue data:', error);
+  }
+}
+
+if (typeof document !== 'undefined') {
+  loadGitHub();
+  loadRevenue();
+}

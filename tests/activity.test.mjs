@@ -16,17 +16,19 @@ test('site and README use Asugan with English copy and date locale', async () =>
   assert.doesNotMatch(html + script + readme, /[çÇğĞıİöÖşŞüÜ]/);
 });
 
-test('portfolio uses dark colors, the GitHub avatar, and updated copy', async () => {
+test('portfolio has a light sidebar, revenue cards, and no old hero or contact section', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
-  assert.match(html, /INDIE DEVELOPER · TURKEY/);
-  assert.match(html, /curiosity & ideas/);
+  assert.match(html, /class="sidebar"/);
   assert.match(html, /class="profile-logo"[^]*?src="assets\/avatar\.jpg"/);
   assert.ok((await readFile(new URL('../assets/avatar.jpg', import.meta.url))).length > 0);
-  assert.match(html, /name="theme-color" content="#111512"/);
-  assert.match(css, /color-scheme: dark/);
-  assert.doesNotMatch(html, /coffee|Dekadans AI|web-project|INDEPENDENT DEVELOPER/);
-  assert.doesNotMatch(css, /\.web-project|\.project-cta|\.project-symbol/);
+  assert.match(css, /color-scheme: light/);
+  assert.match(html, /id="total-revenue"/);
+  for (const id of ['petopia', 'shadow', 'grimoire', 'coldlog']) {
+    assert.match(html, new RegExp(`data-chart="${id}"`));
+    assert.match(html, new RegExp(`data-revenue="${id}"`));
+  }
+  assert.doesNotMatch(html, /class="hero|app-shelf|quick-facts|contact-section|id="contact"/);
 });
 
 test('GitHub links allow HTTPS GitHub only', () => {

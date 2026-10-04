@@ -43,6 +43,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/update_github.py --output _site/data/github.json
+      - name: Refresh RevenueCat revenue
+        env:
+          REVENUECAT_PETOPIA_SECRET_API_KEY: ${{ secrets.REVENUECAT_PETOPIA_SECRET_API_KEY }}
+          REVENUECAT_SHADOW_SECRET_API_KEY: ${{ secrets.REVENUECAT_SHADOW_SECRET_API_KEY }}
+          REVENUECAT_GRIMOIRE_SECRET_API_KEY: ${{ secrets.REVENUECAT_GRIMOIRE_SECRET_API_KEY }}
+          REVENUECAT_COLDLOG_SECRET_API_KEY: ${{ secrets.REVENUECAT_COLDLOG_SECRET_API_KEY }}
+          REVENUECAT_PROJECTS: ${{ vars.REVENUECAT_PROJECTS }}
+        run: python3 scripts/update_revenue.py --output _site/data/revenue.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
