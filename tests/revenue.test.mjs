@@ -35,6 +35,18 @@ test('invalid currency, amount, dates, or incomplete history never render as rev
   assert.throws(() => revenueData(data), /Invalid/);
 });
 
+test('charts fill summary, app-card, and mobile viewport widths without distorting values', () => {
+  for (const [width, height] of [[1100, 140], [480, 114], [260, 125]]) {
+    const chart = chartPoints([-10, 0, 20], width, height);
+    assert.equal(chart.points[0][0], 40);
+    assert.equal(chart.points.at(-1)[0], width - 10);
+    assert.equal(chart.points[0][1], height - 24);
+    assert.equal(chart.points.at(-1)[1], 12);
+    assert.equal(chart.points[1][1], chart.zero);
+    assert.equal(chart.points[1][0], (40 + width - 10) / 2);
+  }
+});
+
 test('native chart handles zeros, negative refunds, and positive revenue without NaN', () => {
   for (const values of [Array(12).fill(0), [-10, 0, 20], [-30, -20, -10]]) {
     const chart = chartPoints(values);

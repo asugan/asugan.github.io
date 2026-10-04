@@ -115,12 +115,14 @@ export function revenueData(data) {
   return data;
 }
 
-export function chartPoints(values) {
+export function chartPoints(values, width = 400, height = 114) {
   if (!Array.isArray(values) || values.length < 2 || !values.every(Number.isFinite)) throw new Error('Invalid chart values');
   const low = Math.min(0, ...values);
   const high = Math.max(0, ...values);
   const range = high - low || 1;
-  return { low, high, zero: 90 - (0 - low) / range * 78, points: values.map((value, index) => [40 + index / (values.length - 1) * 350, 90 - (value - low) / range * 78]) };
+  const right = width - 10;
+  const bottom = height - 24;
+  return { low, high, right, bottom, zero: bottom - (0 - low) / range * (bottom - 12), points: values.map((value, index) => [40 + index / (values.length - 1) * (right - 40), bottom - (value - low) / range * (bottom - 12)]) };
 }
 
 function svgNode(tag, attributes, text) {
@@ -131,25 +133,33 @@ function svgNode(tag, attributes, text) {
 }
 
 function renderChart(container, values, months, id) {
-  const { low, high, zero, points } = chartPoints(values);
-  const chart = svgNode('svg', { viewBox: '0 0 400 114', role: 'img', 'aria-label': 'Monthly gross revenue in USD; current month is partial' });
-  chart.append(svgNode('title', {}, months.map((month, index) => `${month}: ${money.format(values[index])}`).join(', ')));
-  const defs = svgNode('defs', {});
-  const gradient = svgNode('linearGradient', { id: `fill-${id}`, x1: '0', y1: '0', x2: '0', y2: '1' });
-  gradient.append(svgNode('stop', { offset: '0%', 'stop-color': '#e7ac36', 'stop-opacity': '.35' }), svgNode('stop', { offset: '100%', 'stop-color': '#e7ac36', 'stop-opacity': '.03' }));
-  defs.append(gradient);
-  chart.append(defs);
-  for (const y of [12, 51, 90]) chart.append(svgNode('line', { x1: 40, x2: 390, y1: y, y2: y, class: 'chart-grid' }));
-  for (const [index, month] of months.entries()) {
-    const x = points[index][0];
-    chart.append(svgNode('line', { x1: x, x2: x, y1: 12, y2: 90, class: 'chart-grid' }));
-    if (index % 2 === 0 || index === months.length - 1) chart.append(svgNode('text', { x, y: 109, 'text-anchor': 'middle', class: 'chart-label' }, new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })));
-  }
-  const path = points.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-  chart.append(svgNode('path', { d: `${path} L390,${zero} L40,${zero} Z`, fill: `url(#fill-${id})` }), svgNode('path', { d: path, class: 'chart-line' }));
-  const compactMoney = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
-  chart.append(svgNode('text', { x: 35, y: 16, 'text-anchor': 'end', class: 'chart-label' }, compactMoney.format(high)), svgNode('text', { x: 35, y: 93, 'text-anchor': 'end', class: 'chart-label' }, compactMoney.format(low)));
-  container.replaceChildren(chart);
+  const draw = () => {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (width <= 50 || height <= 36) return;
+    const { low, high, right, bottom, zero, points } = chartPoints(values, width, height);
+    const chart = svgNode('svg', { viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': 'Monthly gross revenue in USD; current month is partial' });
+    chart.append(svgNode('title', {}, months.map((month, index) => `${month}: ${money.format(values[index])}`).join(', ')));
+    const defs = svgNode('defs', {});
+    const gradient = svgNode('linearGradient', { id: `fill-${id}`, x1: '0', y1: '0', x2: '0', y2: '1' });
+    gradient.append(svgNode('stop', { offset: '0%', 'stop-color': '#e7ac36', 'stop-opacity': '.35' }), svgNode('stop', { offset: '100%', 'stop-color': '#e7ac36', 'stop-opacity': '.03' }));
+    defs.append(gradient);
+    chart.append(defs);
+    for (const y of [12, (12 + bottom) / 2, bottom]) chart.append(svgNode('line', { x1: 40, x2: right, y1: y, y2: y, class: 'chart-grid' }));
+    const labelStep = width >= 380 ? 1 : 2;
+    for (const [index, month] of months.entries()) {
+      const x = points[index][0];
+      chart.append(svgNode('line', { x1: x, x2: x, y1: 12, y2: bottom, class: 'chart-grid' }));
+      if (index % labelStep === 0 || index === months.length - 1) chart.append(svgNode('text', { x, y: height - 5, 'text-anchor': 'middle', class: 'chart-label' }, new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })));
+    }
+    const path = points.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+    chart.append(svgNode('path', { d: `${path} L${right},${zero} L40,${zero} Z`, fill: `url(#fill-${id})` }), svgNode('path', { d: path, class: 'chart-line' }));
+    const compactMoney = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
+    chart.append(svgNode('text', { x: 35, y: 16, 'text-anchor': 'end', class: 'chart-label' }, compactMoney.format(high)), svgNode('text', { x: 35, y: bottom + 3, 'text-anchor': 'end', class: 'chart-label' }, compactMoney.format(low)));
+    container.replaceChildren(chart);
+  };
+  draw();
+  new ResizeObserver(draw).observe(container);
 }
 
 async function loadRevenue() {
